@@ -1,0 +1,6 @@
+{
+  "name": "today-tarot",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" }
+}
