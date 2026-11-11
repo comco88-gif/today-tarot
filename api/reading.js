@@ -1,7 +1,10 @@
 // POST /api/reading — 카드로 AI 풀이를 만든다. 키는 Vercel 환경변수 GEMINI_API_KEY에서만 읽는다.
 import { validate, buildPrompt } from "./_lib.js";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+const RETRIES = 2;              // 503(과부하)일 때 추가로 시도하는 횟수
+const DEADLINE_MS = 45000;      // 재시도 포함 전체 제한 시간
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -18,18 +21,30 @@ export default async function handler(req, res) {
     cards: body.cards.map(d => ({ c: d.c, rev: d.rev })) };
   const { system, user } = buildPrompt(rec);
 
+  const payload = JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: "user", parts: [{ text: user }] }],
+    generationConfig: { temperature: 0.9, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
+  });
+  const start = Date.now();
+
   try {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: system }] },
-        contents: [{ role: "user", parts: [{ text: user }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
-      }),
-      signal: AbortSignal.timeout(25000)
-    });
-    const j = await r.json().catch(() => ({}));
+    let r, j;
+    for (let attempt = 0; ; attempt++) {
+      const left = DEADLINE_MS - (Date.now() - start);
+      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: payload,
+        signal: AbortSignal.timeout(Math.min(25000, Math.max(left, 1000)))
+      });
+      j = await r.json().catch(() => ({}));
+      if (r.status !== 503 || attempt >= RETRIES) break;
+      const wait = 1000 * 2 ** attempt + Math.floor(Math.random() * 500); // 1s, 2s (+지터)
+      if (DEADLINE_MS - (Date.now() - start) < wait + 5000) break;        // 남은 시간이 부족하면 중단
+      console.warn("gemini 503, retry", attempt + 1, "in", wait, "ms");
+      await sleep(wait);
+    }
     if (!r.ok) {
       console.error("gemini error", r.status, j?.error?.message);
       return res.status(502).json({ error: r.status === 429 ? "busy" : "ai_error" });

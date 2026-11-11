@@ -16,7 +16,7 @@
 ## 배포 (Vercel)
 1. 이 저장소를 Vercel에서 Import (프레임워크: Other, 빌드 명령 없음).
 2. 환경변수 `GEMINI_API_KEY`(Production) 추가 → 재배포.
-3. 선택: `GEMINI_MODEL`로 모델 변경 (기본 `gemini-2.5-flash`).
+3. 선택: `GEMINI_MODEL`로 모델 변경 (기본 `gemini-3.8-flash`). Gemini가 503(과부하)이면 서버에서 최대 2번 자동 재시도한다.
 
 AI 호출이 실패하면 앱은 자동으로 "기본 풀이"(템플릿)를 보여준다.
 
