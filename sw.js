@@ -1,5 +1,5 @@
 // 화면(index.html·이미지·폰트)을 바꾸면 CACHE 버전을 올릴 것.
-const CACHE = "tarot-v3";
+const CACHE = "tarot-v4";
 const CORE = ["./", "index.html", "manifest.webmanifest", "fonts/Pretendard.woff2", "icons/icon-192.png"];
 
 self.addEventListener("install", e => {

@@ -615,7 +615,8 @@ async function aiReading(rec,onText){
   if(IN_CLAUDE){ // claude.ai 미리보기: Claude가 풀이
     if(!samplePromise)samplePromise=window.claude.use("sample").catch(()=>null);const sample=await samplePromise;if(!sample)throw {code:"no_ai"};
     const p=buildPrompt(payload);const r=await sample(p.system+"\n\n"+p.user,{onText:({text})=>onText(text),cache:false});return r.text}
-  const r=await fetch("api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  let r;try{r=await fetch("api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(25000)})}
+  catch(e){throw {code:e&&(e.name==="TimeoutError"||e.name==="AbortError")?"timeout":"network"}}
   const j=await r.json().catch(()=>({}));if(!r.ok||!j.text)throw {code:j.error||r.status};return j.text}
 async function showReading(rec){
   const el=$("reading");if(!el)return;const t=typeOf(rec),L=lucky(rec);
@@ -629,7 +630,11 @@ async function showReading(rec){
   if(aiOff)return fallback();
   paint('<p class="hint">카드를 읽고 있어요…</p>',"AI가 쓴 풀이");
   try{const text=await aiReading(rec,tx=>{const b=$("rbody");if(b)b.innerHTML=renderText(tx)});rec.reading=text;rec.src="ai";save();paint(renderText(text),"AI가 쓴 풀이")}
-  catch(e){const c=e&&e.code;if(c==="no_key"||c===404||c==="no_ai"||c==="not_granted")aiOff=true;fallback(c==="rate_limited"||c===429?" (오늘 AI 풀이 한도를 넘어 기본 풀이로 보여드려요)":"")}
+  catch(e){const c=e&&e.code;
+    if(c==="busy"||c==="timeout"||c===503||c===504){ // 과부하: 기본 풀이는 보여주되 저장하지 않아 다시 시도할 수 있게
+      paint(`<p class="hint">AI가 바빠요, 잠시 후 다시 시도해 주세요.</p><div class="btnrow"><button class="btn primary" id="retryAi">AI 풀이 다시 받기</button></div>`+renderText(template(rec)),"기본 풀이 (AI가 바빠요)");
+      const rb=$("retryAi");if(rb)rb.onclick=()=>showReading(rec);return}
+    if(c==="no_key"||c===404||c==="no_ai"||c==="not_granted")aiOff=true;fallback(c==="rate_limited"||c===429?" (오늘 AI 풀이 한도를 넘어 기본 풀이로 보여드려요)":"")}
 }
 // ---------- save / share ----------
 async function saveFile(blob,name){

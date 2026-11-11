@@ -10,13 +10,13 @@
 | `api/reading.js` | `POST /api/reading` → Gemini로 풀이 생성. 키는 환경변수 `GEMINI_API_KEY` |
 | `cards/00.jpg`~`77.jpg` | 카드 이미지 (0~21 메이저, 22~ 완드·컵·소드·펜타클 순) |
 | `fonts/Pretendard.woff2` | 본문 폰트 |
-| `sw.js` | 오프라인 캐시 (버전 `tarot-v3`) |
+| `sw.js` | 오프라인 캐시 (버전 `tarot-v4`) |
 | `manifest.webmanifest`, `icons/` | 홈 화면 앱 설정 |
 
 ## 배포 (Vercel)
 1. 이 저장소를 Vercel에서 Import (프레임워크: Other, 빌드 명령 없음).
 2. 환경변수 `GEMINI_API_KEY`(Production) 추가 → 재배포.
-3. 선택: `GEMINI_MODEL`로 모델 변경 (기본 `gemini-3.8-flash`). Gemini가 503(과부하)이면 서버에서 최대 2번 자동 재시도한다.
+3. 선택: `GEMINI_MODEL`로 모델 변경 (기본 `gemini-3.8-flash`). Gemini가 503(과부하)이면 서버에서 1번 자동 재시도하고(전체 20초 제한), 그래도 실패하면 화면에 "AI가 바빠요" 안내와 다시 시도 버튼을 보여준다.
 
 AI 호출이 실패하면 앱은 자동으로 "기본 풀이"(템플릿)를 보여준다.
 

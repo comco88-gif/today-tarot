@@ -2,8 +2,8 @@
 import { validate, buildPrompt } from "./_lib.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const RETRIES = 2;              // 503(과부하)일 때 추가로 시도하는 횟수
-const DEADLINE_MS = 45000;      // 재시도 포함 전체 제한 시간
+const RETRIES = 1;              // 503(과부하)일 때 추가로 시도하는 횟수
+const DEADLINE_MS = 20000;      // 재시도 포함 전체 제한 시간
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export default async function handler(req, res) {
@@ -36,18 +36,20 @@ export default async function handler(req, res) {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: payload,
-        signal: AbortSignal.timeout(Math.min(25000, Math.max(left, 1000)))
+        signal: AbortSignal.timeout(Math.max(left, 1000))
       });
       j = await r.json().catch(() => ({}));
       if (r.status !== 503 || attempt >= RETRIES) break;
-      const wait = 1000 * 2 ** attempt + Math.floor(Math.random() * 500); // 1s, 2s (+지터)
-      if (DEADLINE_MS - (Date.now() - start) < wait + 5000) break;        // 남은 시간이 부족하면 중단
+      const wait = 1000 + Math.floor(Math.random() * 500);         // 약 1초 (+지터)
+      if (DEADLINE_MS - (Date.now() - start) < wait + 5000) break; // 남은 시간이 부족하면 중단
       console.warn("gemini 503, retry", attempt + 1, "in", wait, "ms");
       await sleep(wait);
     }
     if (!r.ok) {
       console.error("gemini error", r.status, j?.error?.message);
-      return res.status(502).json({ error: r.status === 429 ? "busy" : "ai_error" });
+      if (r.status === 503) return res.status(503).json({ error: "busy" });          // 과부하: 잠시 후 다시
+      if (r.status === 429) return res.status(429).json({ error: "rate_limited" });  // 한도 초과
+      return res.status(502).json({ error: "ai_error" });
     }
     const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
     if (!text) return res.status(502).json({ error: "empty" });
