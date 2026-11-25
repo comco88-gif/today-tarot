@@ -173,7 +173,12 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
 .gate-box{max-width:420px;width:100%;text-align:center}
 .gate-box h1{margin:8px 0 14px}
 .gate-box p{color:var(--muted);margin:0 0 8px}
-.gate-box .btn{width:100%;margin-top:18px}
+.gate-box .btn{width:100%;margin-top:10px}
+.login-btns{margin-top:18px}
+.btn.kakao{background:#FEE500;color:#191919;border-color:#FEE500;font-weight:700}
+.btn.danger{border-color:var(--warn);color:var(--warn)}
+.consent{font-size:.8rem!important;margin-top:18px!important}
+.consent a,.set a{color:var(--accent)}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -183,8 +188,12 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
     <div class="eyebrow">THE DAILY ARCANA</div>
     <h1 id="gateTitle">오늘의 <b>타로</b></h1>
     <p>로그인하면 매일 뽑은 카드와 타로 일기가 내 계정에 저장돼요. 휴대폰과 PC 어디서든 이어서 볼 수 있어요.</p>
-    <button class="btn primary" id="googleBtn" hidden>Google로 시작하기</button>
+    <div class="login-btns">
+      <button class="btn kakao" id="kakaoBtn" hidden>카카오로 시작하기</button>
+      <button class="btn primary" id="googleBtn" hidden>Google로 시작하기</button>
+    </div>
     <p class="hint" id="gateMsg" role="status">로그인 상태를 확인하고 있어요…</p>
+    <p class="consent">로그인하면 <a href="terms.html">이용약관</a>과 <a href="privacy.html">개인정보처리방침</a>에 동의하는 것으로 봐요. 만 14세 이상만 이용할 수 있어요.</p>
   </div>
 </div>
 <div class="wrap">
@@ -223,7 +232,7 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
 <section id="v-settings" class="set" hidden>
   <h2 style="margin-top:0">계정</h2>
   <p id="acctInfo"></p>
-  <button class="btn" id="logoutBtn" hidden>로그아웃</button>
+  <div class="btnrow"><button class="btn" id="logoutBtn" hidden>로그아웃</button><button class="btn danger" id="deleteBtn" hidden>회원 탈퇴</button></div>
   <p id="syncMsg" class="hint" role="status"></p>
   <h2>테마</h2>
   <div class="skins" id="skins"></div>
@@ -238,7 +247,8 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
   <h2>처음 안내 다시 보기</h2>
   <button class="btn" id="tourBtn">사용 방법 보기</button>
   <h2>개인정보 안내</h2>
-  <p>오늘의 타로는 Google 계정으로 로그인해서 써요. 로그인에는 Google이 알려 주는 이메일과 이름만 쓰고, 뽑은 카드·일기·메모는 내 계정에만 저장돼 다른 사람은 볼 수 없어요(저장소: Supabase). 설정의 로그아웃을 누르면 이 기기에서 기록이 지워지고, 다시 로그인하면 돌아와요.</p>
+  <p><a href="privacy.html">개인정보처리방침</a> · <a href="terms.html">이용약관</a></p>
+  <p>오늘의 타로는 Google 또는 카카오 계정으로 로그인해서 써요. 로그인에는 계정이 알려 주는 이메일(제공한 경우)과 이름만 쓰고, 뽑은 카드·일기·메모는 내 계정에만 저장돼 다른 사람은 볼 수 없어요(저장소: Supabase). 설정의 로그아웃을 누르면 이 기기에서 기록이 지워지고, 다시 로그인하면 돌아와요. 회원 탈퇴를 누르면 계정과 모든 기록이 서버에서 바로 지워져요.</p>
   <p>AI 풀이를 만들 때는 뽑은 카드, 선택한 주제, 직접 적은 질문이 AI 서비스(Anthropic Claude)로 전송돼요. 질문에 이름·연락처 같은 개인정보는 적지 마세요.</p>
   <p>궁합 링크에는 뽑은 카드 번호와 날짜만 담겨요.</p>
   <p>타로 풀이는 재미와 자기성찰을 위한 콘텐츠이며, 건강·법률·투자에 대한 전문적 조언이 아니에요.</p>
@@ -744,20 +754,24 @@ function route(){const h=location.hash.slice(1),v=VIEWS.includes(h)?h:"app";VIEW
   if(v==="deck")renderDeck();if(v==="diary")renderDiary();if(v==="settings")renderSettings();if(v==="app")render()}
 addEventListener("hashchange",route);route();
 // ---------- login & cloud sync (Supabase + Google) ----------
-const AUTH={client:null,user:null,synced:{},timer:null,noSync:false};
+const AUTH={client:null,user:null,synced:{},timer:null,noSync:false,providers:[]};
 function setSync(m){const el=$("syncMsg");if(el)el.textContent=m||""}
-function showGate(msg){$("gate").hidden=false;$("gateMsg").textContent=msg||"";$("googleBtn").hidden=!AUTH.client||!!AUTH.user}
+function showGate(msg){$("gate").hidden=false;$("gateMsg").textContent=msg||"";const show=!!AUTH.client&&!AUTH.user;
+  $("googleBtn").hidden=!(show&&AUTH.providers.includes("google"));$("kakaoBtn").hidden=!(show&&AUTH.providers.includes("kakao"))}
+function userName(u){const m=u.user_metadata||{};return u.email||m.email||m.full_name||m.name||m.nickname||m.preferred_username||"내"}
 function hideGate(){$("gate").hidden=true}
 function ready(){APP_READY=true;hideGate();route();if(!store.get("tarot2-tour",false))showTour(0)}
 function renderAccount(){const a=$("acctInfo"),b=$("logoutBtn");if(!a)return;
-  if(AUTH.user){a.textContent=(AUTH.user.email||"Google")+" 계정으로 로그인했어요. 기록이 계정에 저장돼요.";b.hidden=false}
-  else{a.textContent=IN_CLAUDE?"미리보기에서는 로그인 없이 이 기기에만 저장돼요.":"로그인 설정 전이라 기록이 이 기기에만 저장돼요.";b.hidden=true}}
+  const prov={google:"Google",kakao:"카카오"}[(AUTH.user&&AUTH.user.app_metadata||{}).provider]||"";
+  if(AUTH.user){a.textContent=userName(AUTH.user)+(prov?" ("+prov+")":"")+" 계정으로 로그인했어요. 기록이 계정에 저장돼요.";b.hidden=false;$("deleteBtn").hidden=false}
+  else{a.textContent=IN_CLAUDE?"미리보기에서는 로그인 없이 이 기기에만 저장돼요.":"로그인 설정 전이라 기록이 이 기기에만 저장돼요.";b.hidden=true;$("deleteBtn").hidden=true}}
 async function authToken(){if(!AUTH.client)return null;try{const {data}=await AUTH.client.auth.getSession();return data.session?data.session.access_token:null}catch(e){return null}}
 async function initAuth(){
   if(IN_CLAUDE){readings=store.get(RKEY,{});return ready()}
   let cfg={};try{const r=await fetch("api/config",{cache:"no-store"});if(r.ok)cfg=await r.json()}catch(e){}
   if(!cfg.url||!cfg.key){readings=store.get(RKEY,{});return ready()} // 로그인 설정 전: 이 기기에만 저장
   if(!window.supabase)return showGate("로그인 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.");
+  AUTH.providers=Array.isArray(cfg.providers)&&cfg.providers.length?cfg.providers:["google"];
   AUTH.client=window.supabase.createClient(cfg.url,cfg.key,{auth:{flowType:"pkce",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   AUTH.client.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"&&AUTH.user){AUTH.user=null;APP_READY=false;readings={};route();showGate("")}});
   let session=null;try{session=(await AUTH.client.auth.getSession()).data.session}catch(e){}
@@ -784,12 +798,23 @@ async function cloudPush(){
   if(error){setSync("기록을 저장하지 못했어요. 인터넷이 연결되면 다시 저장할게요.");return false}
   if(AUTH.user&&AUTH.user.id===uid)Object.assign(AUTH.synced,js);setSync("");return true}
 addEventListener("online",cloudSave);
-$("googleBtn").onclick=async()=>{$("gateMsg").textContent="Google로 이동하고 있어요…";
-  const {error}=await AUTH.client.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname+location.search}});
-  if(error)$("gateMsg").textContent="로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요."};
+async function signIn(provider,label){$("gateMsg").textContent=label+"(으)로 이동하고 있어요…";
+  const {error}=await AUTH.client.auth.signInWithOAuth({provider,options:{redirectTo:location.origin+location.pathname+location.search}});
+  if(error)$("gateMsg").textContent="로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요."}
+$("googleBtn").onclick=()=>signIn("google","Google");
+$("kakaoBtn").onclick=()=>signIn("kakao","카카오");
 $("logoutBtn").onclick=async()=>{clearTimeout(AUTH.timer);const ok=await cloudPush();
   if(!ok&&!confirm("아직 저장되지 않은 기록이 있어요. 그래도 로그아웃할까요?"))return;
   try{localStorage.removeItem(RKEY)}catch(e){}RKEY="tarot2-readings";await AUTH.client.auth.signOut()};
+$("deleteBtn").onclick=async()=>{
+  if(!confirm("회원 탈퇴를 하면 계정과 모든 타로 기록·일기가 바로 지워지고 되살릴 수 없어요. 탈퇴할까요?"))return;
+  const b=$("deleteBtn");b.disabled=true;setSync("탈퇴하고 있어요…");clearTimeout(AUTH.timer);
+  const {error}=await AUTH.client.rpc("delete_my_account");
+  if(error){b.disabled=false;setSync("탈퇴하지 못했어요. 잠시 후 다시 시도해 주세요.");return}
+  try{localStorage.removeItem(RKEY);localStorage.removeItem("tarot2-readings")}catch(e){}RKEY="tarot2-readings";
+  AUTH.user=null;APP_READY=false;readings={};AUTH.synced={};b.disabled=false;setSync("");
+  try{await AUTH.client.auth.signOut({scope:"local"})}catch(e){}
+  route();showGate("탈퇴가 끝났어요. 그동안 이용해 주셔서 고마워요.")};
 initAuth();
 
 </script>

@@ -1,5 +1,5 @@
 // 화면(index.html·이미지·폰트)을 바꾸면 CACHE 버전을 올릴 것.
-const CACHE = "tarot-v6";
+const CACHE = "tarot-v7";
 const CORE = ["./", "index.html", "manifest.webmanifest", "fonts/Pretendard.woff2", "icons/icon-192.png"];
 
 self.addEventListener("install", e => {
@@ -12,9 +12,10 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== location.origin || url.pathname.startsWith("/api/")) return;
-  if (req.mode === "navigate") { // 화면은 네트워크 우선, 오프라인이면 캐시
-    e.respondWith(fetch(req).then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put("index.html", cp)); return r; })
-      .catch(() => caches.match("index.html")));
+  if (req.mode === "navigate") { // 화면은 네트워크 우선, 오프라인이면 캐시 (페이지별로 따로 저장)
+    const page = /\.html$/.test(url.pathname) ? url.pathname : "index.html";
+    e.respondWith(fetch(req).then(r => { if (r.ok) { const cp = r.clone(); caches.open(CACHE).then(c => c.put(page, cp)); } return r; })
+      .catch(() => caches.match(page).then(hit => hit || caches.match("index.html"))));
     return;
   }
   e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req).then(r => {

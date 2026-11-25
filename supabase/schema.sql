@@ -53,3 +53,21 @@ end $$;
 
 revoke all on function public.use_ai_quota(int) from public, anon;
 grant execute on function public.use_ai_quota(int) to authenticated;
+
+-- 3) 회원 탈퇴: 로그인한 본인의 계정과 모든 기록을 지운다(기록 표는 계정 삭제와 함께 자동 삭제).
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare uid uuid := auth.uid();
+begin
+  if uid is null then raise exception 'not logged in'; end if;
+  delete from public.readings where user_id = uid;
+  delete from public.ai_usage where user_id = uid;
+  delete from auth.users where id = uid;
+end $$;
+
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

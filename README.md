@@ -1,6 +1,6 @@
 # 오늘의 타로
 
-하루 한 번, 직접 섞고 고르는 타로 웹앱. 78장 라이더-웨이트 카드(1909년 원판, 퍼블릭 도메인), Google 로그인(Supabase)과 계정별 기록 저장, AI 풀이(Claude), 기록 일기, 궁합 링크, 홈 화면 설치(PWA)를 지원한다.
+하루 한 번, 직접 섞고 고르는 타로 웹앱. 78장 라이더-웨이트 카드(1909년 원판, 퍼블릭 도메인), Google·카카오 로그인(Supabase)과 계정별 기록 저장, 회원 탈퇴, AI 풀이(Claude), 기록 일기, 궁합 링크, 홈 화면 설치(PWA)를 지원한다.
 
 ## 구조
 | 경로 | 내용 |
@@ -11,7 +11,8 @@
 | `api/reading.js` | `POST /api/reading` → Claude API로 풀이 생성(글이 만들어지는 대로 NDJSON 스트림). 키는 환경변수 `ANTHROPIC_API_KEY` |
 | `cards/00.jpg`~`77.jpg` | 카드 이미지 (0~21 메이저, 22~ 완드·컵·소드·펜타클 순) |
 | `fonts/Pretendard.woff2` | 본문 폰트 |
-| `sw.js` | 오프라인 캐시 (버전 `tarot-v6`) |
+| `privacy.html`, `terms.html`, `legal.css` | 개인정보처리방침·이용약관 (`[운영자 이름]`·`[문의 이메일]` 채우기) |
+| `sw.js` | 오프라인 캐시 (버전 `tarot-v7`) |
 | `vendor/supabase-js-2.118.0.js` | Supabase 브라우저 라이브러리(직접 호스팅) |
 | `supabase/schema.sql` | Supabase에 한 번 실행할 표·보안 규칙·AI 횟수 함수 |
 | `manifest.webmanifest`, `icons/` | 홈 화면 앱 설정 |
@@ -27,7 +28,10 @@
 1. supabase.com에서 프로젝트를 만들고 SQL Editor에서 `supabase/schema.sql`을 실행한다.
 2. Google Cloud Console에서 OAuth 클라이언트(웹)를 만들고, 승인된 리디렉션 URI에 `https://<프로젝트>.supabase.co/auth/v1/callback`을 넣는다.
 3. Supabase → Authentication → Sign In / Providers → Google에 클라이언트 ID·보안 비밀을 넣고 켠다. URL Configuration의 Site URL과 Redirect URLs에 사이트 주소(`https://…vercel.app/**`)를 넣는다.
-4. Vercel 환경변수 `SUPABASE_URL`, `SUPABASE_ANON_KEY`(anon 또는 publishable 키, 공개용) 추가 → 재배포. 선택: `AI_DAILY_LIMIT`(1인 하루 AI 풀이 횟수, 기본 20).
+4. Vercel 환경변수 `SUPABASE_URL`, `SUPABASE_ANON_KEY`(anon 또는 publishable 키, 공개용) 추가 → 재배포. 선택: `AI_DAILY_LIMIT`(1인 하루 AI 풀이 횟수, 기본 20), `LOGIN_PROVIDERS`(로그인 버튼, 기본 `google`, 카카오까지 쓰면 `google,kakao`).
+5. 카카오(선택): Kakao Developers에서 앱을 만들고 REST API 키·Client Secret을 Supabase → Providers → Kakao에 넣는다. 카카오 로그인 Redirect URI는 Supabase의 Callback URL. 그다음 `LOGIN_PROVIDERS=google,kakao`.
+
+회원 탈퇴는 Supabase 함수 `delete_my_account`가 본인 계정과 기록을 바로 지운다. Google OAuth 동의 화면에는 `/privacy.html`, `/terms.html` 주소를 넣는다.
 
 두 값이 없으면 로그인 없이 예전처럼 이 기기에만 저장한다. 있으면 앱 전체에 로그인이 필요하고, 기록은 `readings` 표에 계정별로 저장(본인만 읽기·쓰기, RLS), AI 풀이는 로그인한 사람만 하루 `AI_DAILY_LIMIT`번까지 받는다. 로그인 전 이 기기에 있던 기록은 처음 로그인한 계정으로 옮겨진다. **service_role(secret) 키는 어디에도 넣지 않는다.**
 
