@@ -1,16 +1,31 @@
-// POST /api/reading — 카드로 AI 풀이를 만든다. 키는 Vercel 환경변수 GEMINI_API_KEY에서만 읽는다.
+// POST /api/reading — 카드로 AI 풀이를 만든다(Claude API).
+// 키는 Vercel 환경변수 ANTHROPIC_API_KEY에서만 읽는다(SDK가 자동으로 읽음). 코드·저장소에 넣지 말 것.
+// 응답은 NDJSON 스트림: 글이 만들어지는 대로 {"t":"조각"} 줄을 보내고, 끝나면 {"done":true},
+// 도중에 실패하면 {"error":"코드"}. 시작 전에 실패하면 일반 JSON {"error":"코드"} + 상태 코드.
+import Anthropic from "@anthropic-ai/sdk";
 import { validate, buildPrompt } from "./_lib.js";
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const RETRIES = 1;              // 503(과부하)일 때 추가로 시도하는 횟수
-const DEADLINE_MS = 20000;      // 재시도 포함 전체 제한 시간
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
+const FIRST_TEXT_MS = 20000;   // 이 시간 안에 첫 글자가 안 오면 "AI가 바빠요"
+const TOTAL_MS = 55000;        // 전체 제한 (vercel.json maxDuration 60초 안쪽)
+
+// 과부하·일시 오류는 SDK가 1번 자동 재시도한다.
+const client = process.env.ANTHROPIC_API_KEY ? new Anthropic({ maxRetries: 1 }) : null;
+
+function errorCode(e) {
+  if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) return "no_key";
+  if (e instanceof Anthropic.RateLimitError) return "rate_limited";
+  if (e instanceof Anthropic.InternalServerError) return "busy"; // 500·503·529(과부하)
+  if (e instanceof Anthropic.APIUserAbortError || e instanceof Anthropic.APIConnectionTimeoutError) return "timeout";
+  if (e instanceof Anthropic.APIError && e.status === 402) return "rate_limited"; // 크레딧 부족
+  return "ai_error";
+}
+const STATUS = { no_key: 503, rate_limited: 429, busy: 503, timeout: 504, ai_error: 502, refused: 502, empty: 502 };
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   if (req.method !== "POST") return res.status(405).json({ error: "method" });
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return res.status(503).json({ error: "no_key" });
+  if (!client) return res.status(503).json({ error: "no_key" });
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
@@ -21,41 +36,55 @@ export default async function handler(req, res) {
     cards: body.cards.map(d => ({ c: d.c, rev: d.rev })) };
   const { system, user } = buildPrompt(rec);
 
-  const payload = JSON.stringify({
-    systemInstruction: { parts: [{ text: system }] },
-    contents: [{ role: "user", parts: [{ text: user }] }],
-    generationConfig: { temperature: 0.9, maxOutputTokens: 2048, thinkingConfig: { thinkingBudget: 0 } }
+  const stream = client.beta.messages.stream({
+    model: MODEL,
+    max_tokens: 4096,
+    // 짧은 글쓰기라 생각(thinking)은 끄고 바로 쓴다: 빠르고 저렴하다.
+    thinking: { type: "between_tools" },
+    // 안전 분류기가 거절하면 서버에서 다른 모델로 한 번 더 시도한다.
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    system,
+    messages: [{ role: "user", content: user }],
   });
-  const start = Date.now();
+
+  let started = false, closed = false, text = "";
+  const firstTimer = setTimeout(() => { if (!started) stream.abort(); }, FIRST_TEXT_MS);
+  const totalTimer = setTimeout(() => stream.abort(), TOTAL_MS);
+  res.on?.("close", () => { if (!res.writableEnded) { closed = true; stream.abort(); } });
+  const send = obj => { if (!closed) res.write(JSON.stringify(obj) + "\n"); };
 
   try {
-    let r, j;
-    for (let attempt = 0; ; attempt++) {
-      const left = DEADLINE_MS - (Date.now() - start);
-      r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-        body: payload,
-        signal: AbortSignal.timeout(Math.max(left, 1000))
-      });
-      j = await r.json().catch(() => ({}));
-      if (r.status !== 503 || attempt >= RETRIES) break;
-      const wait = 1000 + Math.floor(Math.random() * 500);         // 약 1초 (+지터)
-      if (DEADLINE_MS - (Date.now() - start) < wait + 5000) break; // 남은 시간이 부족하면 중단
-      console.warn("gemini 503, retry", attempt + 1, "in", wait, "ms");
-      await sleep(wait);
+    for await (const ev of stream) {
+      if (ev.type === "content_block_delta" && ev.delta.type === "text_delta" && ev.delta.text) {
+        if (!started) {
+          started = true;
+          res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" });
+        }
+        text += ev.delta.text;
+        send({ t: ev.delta.text });
+      }
     }
-    if (!r.ok) {
-      console.error("gemini error", r.status, j?.error?.message);
-      if (r.status === 503) return res.status(503).json({ error: "busy" });          // 과부하: 잠시 후 다시
-      if (r.status === 429) return res.status(429).json({ error: "rate_limited" });  // 한도 초과
-      return res.status(502).json({ error: "ai_error" });
+    const msg = await stream.finalMessage();
+    let code = null;
+    if (msg.stop_reason === "refusal") code = "refused";
+    else if (!text.trim()) code = "empty";
+    if (code) {
+      console.error("claude", code, msg.stop_details?.category ?? "");
+      if (!started) return res.status(STATUS[code]).json({ error: code });
+      send({ error: code });
+    } else {
+      send({ done: true });
     }
-    const text = (j.candidates?.[0]?.content?.parts || []).map(p => p.text || "").join("").trim();
-    if (!text) return res.status(502).json({ error: "empty" });
-    return res.status(200).json({ text: text.slice(0, 4000) });
+    return res.end();
   } catch (e) {
-    console.error("gemini fetch failed", e?.name, e?.message);
-    return res.status(504).json({ error: "timeout" });
+    if (closed) return;
+    const code = errorCode(e);
+    console.error("claude error", code, e?.status ?? "", e?.message ?? e);
+    if (!started) return res.status(STATUS[code]).json({ error: code });
+    send({ error: code });
+    return res.end();
+  } finally {
+    clearTimeout(firstTimer); clearTimeout(totalTimer);
   }
 }
