@@ -9,6 +9,32 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-5-5";
 const FIRST_TEXT_MS = 20000;   // 이 시간 안에 첫 글자가 안 오면 "AI가 바빠요"
 const TOTAL_MS = 55000;        // 전체 제한 (vercel.json maxDuration 60초 안쪽)
 
+// 로그인(Supabase): 두 값이 있으면 로그인한 사람만, 하루 AI_DAILY_LIMIT번까지 풀이를 받는다.
+const SB_URL = process.env.SUPABASE_URL;
+const SB_KEY = process.env.SUPABASE_ANON_KEY;
+const DAILY = Number(process.env.AI_DAILY_LIMIT) || 20;
+
+// 로그인 확인 + 오늘 횟수 1 올리기를 한 번에(supabase/schema.sql의 use_ai_quota). 문제없으면 null.
+async function checkLogin(req) {
+  if (!SB_URL || !SB_KEY) return null; // 로그인 설정 전에는 열어 둔다
+  const auth = req.headers?.authorization || "";
+  if (!/^Bearer \S+$/.test(auth)) return "login";
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/use_ai_quota`, {
+      method: "POST",
+      headers: { apikey: SB_KEY, Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify({ max_per_day: DAILY }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (r.status === 401 || r.status === 403) return "login";
+    if (!r.ok) { console.error("quota check", r.status, (await r.text().catch(() => "")).slice(0, 200)); return "ai_error"; }
+    return (await r.json()) === true ? null : "daily_limit";
+  } catch (e) {
+    console.error("quota check failed", e?.name, e?.message);
+    return "ai_error";
+  }
+}
+
 // 과부하·일시 오류는 SDK가 1번 자동 재시도한다.
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic({ maxRetries: 1 }) : null;
 
@@ -20,7 +46,7 @@ function errorCode(e) {
   if (e instanceof Anthropic.APIError && e.status === 402) return "rate_limited"; // 크레딧 부족
   return "ai_error";
 }
-const STATUS = { no_key: 503, rate_limited: 429, busy: 503, timeout: 504, ai_error: 502, refused: 502, empty: 502 };
+const STATUS = { login: 401, daily_limit: 429, no_key: 503, rate_limited: 429, busy: 503, timeout: 504, ai_error: 502, refused: 502, empty: 502 };
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -31,6 +57,8 @@ export default async function handler(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch { body = null; } }
   const bad = validate(body);
   if (bad) return res.status(400).json({ error: bad });
+  const denied = await checkLogin(req);
+  if (denied) return res.status(STATUS[denied]).json({ error: denied });
 
   const rec = { topic: body.topic, type: body.type, question: body.question.trim(), date: body.date,
     cards: body.cards.map(d => ({ c: d.c, rev: d.rev })) };

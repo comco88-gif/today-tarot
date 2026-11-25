@@ -168,10 +168,25 @@ dialog dd{margin:2px 0 0}
 .tbl{overflow-x:auto}
 table{border-collapse:collapse;width:100%;min-width:560px;font-size:.92rem}
 th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.gate{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px 16px;overflow:auto}
+.gate[hidden]{display:none}
+.gate-box{max-width:420px;width:100%;text-align:center}
+.gate-box h1{margin:8px 0 14px}
+.gate-box p{color:var(--muted);margin:0 0 8px}
+.gate-box .btn{width:100%;margin-top:18px}
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<div id="gate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle">
+  <div class="gate-box">
+    <div class="eyebrow">THE DAILY ARCANA</div>
+    <h1 id="gateTitle">오늘의 <b>타로</b></h1>
+    <p>로그인하면 매일 뽑은 카드와 타로 일기가 내 계정에 저장돼요. 휴대폰과 PC 어디서든 이어서 볼 수 있어요.</p>
+    <button class="btn primary" id="googleBtn" hidden>Google로 시작하기</button>
+    <p class="hint" id="gateMsg" role="status">로그인 상태를 확인하고 있어요…</p>
+  </div>
+</div>
 <div class="wrap">
 <nav aria-label="보기 전환">
   <a href="#app" data-v="app">오늘의 타로</a>
@@ -206,20 +221,24 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
 </section>
 
 <section id="v-settings" class="set" hidden>
-  <h2 style="margin-top:0">테마</h2>
+  <h2 style="margin-top:0">계정</h2>
+  <p id="acctInfo"></p>
+  <button class="btn" id="logoutBtn" hidden>로그아웃</button>
+  <p id="syncMsg" class="hint" role="status"></p>
+  <h2>테마</h2>
   <div class="skins" id="skins"></div>
   <h2>홈 화면에 추가</h2>
   <p>홈 화면에 추가하면 앱처럼 바로 열 수 있어요.</p>
   <p id="installHint"></p>
   <button class="btn" id="installBtn" hidden>홈 화면에 추가</button>
   <h2>기록 백업</h2>
-  <p>기록(도감·일기·연속 방문)은 이 기기의 브라우저에만 저장돼요. 기기를 바꾸기 전에 파일로 내보내고, 새 기기에서 가져오세요.</p>
+  <p>로그인하면 기록(도감·일기·연속 방문)이 내 계정에 저장돼서 다른 기기에서도 이어 볼 수 있어요. 따로 보관하고 싶으면 파일로 내보낼 수도 있어요.</p>
   <div class="btnrow"><button class="btn" id="exportBtn">기록 내보내기</button><label class="btn" for="importFile">기록 가져오기</label><input type="file" id="importFile" accept="application/json,.json" hidden></div>
   <p id="backupMsg" role="status"></p>
   <h2>처음 안내 다시 보기</h2>
   <button class="btn" id="tourBtn">사용 방법 보기</button>
   <h2>개인정보 안내</h2>
-  <p>오늘의 타로는 회원가입 없이 쓸 수 있고, 뽑은 카드·일기·메모는 서버가 아닌 이 기기의 브라우저에만 저장돼요.</p>
+  <p>오늘의 타로는 Google 계정으로 로그인해서 써요. 로그인에는 Google이 알려 주는 이메일과 이름만 쓰고, 뽑은 카드·일기·메모는 내 계정에만 저장돼 다른 사람은 볼 수 없어요(저장소: Supabase). 설정의 로그아웃을 누르면 이 기기에서 기록이 지워지고, 다시 로그인하면 돌아와요.</p>
   <p>AI 풀이를 만들 때는 뽑은 카드, 선택한 주제, 직접 적은 질문이 AI 서비스(Anthropic Claude)로 전송돼요. 질문에 이름·연락처 같은 개인정보는 적지 마세요.</p>
   <p>궁합 링크에는 뽑은 카드 번호와 날짜만 담겨요.</p>
   <p>타로 풀이는 재미와 자기성찰을 위한 콘텐츠이며, 건강·법률·투자에 대한 전문적 조언이 아니에요.</p>
@@ -319,7 +338,7 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
     <li>웹앱 설치(홈 화면에 추가)와 오프라인 캐시, 최근 7일 리포트, 기록 내보내기·가져오기, 개인정보 안내</li>
     <li>서버 호출 제한: Upstash Redis 환경변수가 있으면 IP별 하루 횟수를 정확히 센다</li>
   </ul>
-  <p>남은 것: 아침 알림(푸시 서버와 구독 저장소 필요), 카카오 로그인과 기기 간 동기화(카카오 앱 키와 DB 필요), 전체 사용자 통계.</p>
+  <p>남은 것: 아침 알림(푸시 서버와 구독 저장소 필요), 전체 사용자 통계.</p>
 </section>
 </div>
 
@@ -338,6 +357,7 @@ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);verti
   <div class="btnrow"><button class="btn primary" id="tourNext">다음</button><button class="btn" id="tourSkip">건너뛰기</button></div>
 </dialog>
 
+<script src="vendor/supabase-js-2.118.0.js"></script>
 <script>
 const CARDS=[
 ["바보","The Fool","☼","새 출발 · 자유 · 순수","가볍게 첫발을 떼기 좋은 날이에요. 완벽한 준비보다 시작이 중요해요.","충동적인 결정은 한 번 더 살펴보세요. 무모함과 용기는 달라요.","계산 없는 설렘이 있어요. 새로운 만남이나 관계의 새 국면에 열려 있어 보세요.","새로운 기회가 보이지만, 지갑은 단단히. 시작은 작게 해보세요.","새 프로젝트나 역할에 도전해볼 만해요. 모르는 건 물어보며 가면 돼요."],
@@ -480,8 +500,9 @@ const store={get(k,d=null){try{const v=localStorage.getItem(k);return v==null?d:
 function kst(d=new Date()){return new Date(d.getTime()+9*3600e3).toISOString().slice(0,10)}
 function weekId(){const d=new Date(Date.now()+9*3600e3);const day=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-day);return "W"+d.toISOString().slice(0,10)}
 const TODAY=kst();
-let readings=store.get("tarot2-readings",{});
-function save(){store.set("tarot2-readings",readings)}
+let RKEY="tarot2-readings",APP_READY=false; // 로그인 후에는 계정별 키(tarot2-readings:사용자ID)
+let readings={};
+function save(){if(!APP_READY)return;store.set(RKEY,readings);cloudSave()}
 function streak(){const days=new Set(Object.values(readings).map(r=>r.date));let n=0;let d=new Date();if(!days.has(kst(d)))d=new Date(d.getTime()-864e5);while(days.has(kst(d))){n++;d=new Date(d.getTime()-864e5)}return n}
 function collected(){const s=new Set();Object.values(readings).forEach(r=>r.cards.forEach(c=>s.add(c.c)));return s}
 const vib=ms=>{try{navigator.vibrate&&navigator.vibrate(ms)}catch(e){}};
@@ -616,7 +637,8 @@ async function aiReading(rec,onText){
     if(!samplePromise)samplePromise=window.claude.use("sample").catch(()=>null);const sample=await samplePromise;if(!sample)throw {code:"no_ai"};
     const p=buildPrompt(payload);const r=await sample(p.system+"\n\n"+p.user,{onText:({text})=>onText(text),cache:false});return r.text}
   const netErr=e=>({code:e&&(e.name==="TimeoutError"||e.name==="AbortError")?"timeout":"network"});
-  let r;try{r=await fetch("api/reading",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:AbortSignal.timeout(60000)})}
+  let r;try{const tok=await authToken();
+  r=await fetch("api/reading",{method:"POST",headers:{"Content-Type":"application/json",...(tok?{Authorization:"Bearer "+tok}:{})},body:JSON.stringify(payload),signal:AbortSignal.timeout(60000)})}
   catch(e){throw netErr(e)}
   if(!r.ok||!r.body){const j=await r.json().catch(()=>({}));throw {code:j.error||r.status}}
   // 서버는 NDJSON으로 보낸다: {"t":"글 조각"} … {"done":true} 또는 {"error":"코드"}
@@ -642,7 +664,9 @@ async function showReading(rec){
     if(c==="busy"||c==="timeout"||c===503||c===504){ // 과부하: 기본 풀이는 보여주되 저장하지 않아 다시 시도할 수 있게
       paint(`<p class="hint">AI가 바빠요, 잠시 후 다시 시도해 주세요.</p><div class="btnrow"><button class="btn primary" id="retryAi">AI 풀이 다시 받기</button></div>`+renderText(template(rec)),"기본 풀이 (AI가 바빠요)");
       const rb=$("retryAi");if(rb)rb.onclick=()=>showReading(rec);return}
-    if(c==="no_key"||c===404||c==="no_ai"||c==="not_granted")aiOff=true;fallback(c==="rate_limited"||c===429?" (오늘 AI 풀이 한도를 넘어 기본 풀이로 보여드려요)":"")}
+    if(c==="login"||c===401){showGate("로그인이 만료됐어요. 다시 로그인해 주세요.");return}
+    if(c==="no_key"||c===404||c==="no_ai"||c==="not_granted")aiOff=true;
+    fallback(c==="daily_limit"?" (오늘 AI 풀이 횟수를 다 써서 기본 풀이로 보여드려요)":c==="rate_limited"||c===429?" (오늘 AI 풀이 한도를 넘어 기본 풀이로 보여드려요)":"")}
 }
 // ---------- save / share ----------
 async function saveFile(blob,name){
@@ -698,7 +722,7 @@ function renderDiary(){renderReport();const list=Object.entries(readings).sort((
    <label class="meta" for="memo${i}">실제로 어땠나요?</label><textarea id="memo${i}" data-k="${esc(k)}" maxlength="300">${esc(r.memo||"")}</textarea></div>`}).join("");
   el.querySelectorAll("textarea").forEach(ta=>ta.addEventListener("change",()=>{readings[ta.dataset.k].memo=ta.value;save()}))}
 // ---------- settings ----------
-function renderSettings(){const cur=document.documentElement.dataset.skin;
+function renderSettings(){renderAccount();const cur=document.documentElement.dataset.skin;
   $("skins").innerHTML=Object.entries(SKINS).map(([k,[name,bg,fg,ac]])=>`<button class="skin" data-k="${k}" aria-pressed="${k===cur}" style="background:${bg};color:${fg}">${name}<small style="color:${ac}">${k.toUpperCase()}안</small></button>`).join("");
   $("skins").querySelectorAll(".skin").forEach(b=>b.onclick=()=>{setSkin(b.dataset.k);renderSettings()});
   const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -719,7 +743,54 @@ function route(){const h=location.hash.slice(1),v=VIEWS.includes(h)?h:"app";VIEW
   document.querySelectorAll("nav a").forEach(a=>a.dataset.v===v||(v==="plan"&&a.dataset.v==="settings")?a.setAttribute("aria-current","page"):a.removeAttribute("aria-current"));
   if(v==="deck")renderDeck();if(v==="diary")renderDiary();if(v==="settings")renderSettings();if(v==="app")render()}
 addEventListener("hashchange",route);route();
-if(!store.get("tarot2-tour",false))showTour(0);
+// ---------- login & cloud sync (Supabase + Google) ----------
+const AUTH={client:null,user:null,synced:{},timer:null,noSync:false};
+function setSync(m){const el=$("syncMsg");if(el)el.textContent=m||""}
+function showGate(msg){$("gate").hidden=false;$("gateMsg").textContent=msg||"";$("googleBtn").hidden=!AUTH.client||!!AUTH.user}
+function hideGate(){$("gate").hidden=true}
+function ready(){APP_READY=true;hideGate();route();if(!store.get("tarot2-tour",false))showTour(0)}
+function renderAccount(){const a=$("acctInfo"),b=$("logoutBtn");if(!a)return;
+  if(AUTH.user){a.textContent=(AUTH.user.email||"Google")+" 계정으로 로그인했어요. 기록이 계정에 저장돼요.";b.hidden=false}
+  else{a.textContent=IN_CLAUDE?"미리보기에서는 로그인 없이 이 기기에만 저장돼요.":"로그인 설정 전이라 기록이 이 기기에만 저장돼요.";b.hidden=true}}
+async function authToken(){if(!AUTH.client)return null;try{const {data}=await AUTH.client.auth.getSession();return data.session?data.session.access_token:null}catch(e){return null}}
+async function initAuth(){
+  if(IN_CLAUDE){readings=store.get(RKEY,{});return ready()}
+  let cfg={};try{const r=await fetch("api/config",{cache:"no-store"});if(r.ok)cfg=await r.json()}catch(e){}
+  if(!cfg.url||!cfg.key){readings=store.get(RKEY,{});return ready()} // 로그인 설정 전: 이 기기에만 저장
+  if(!window.supabase)return showGate("로그인 기능을 불러오지 못했어요. 인터넷 연결을 확인하고 새로고침해 주세요.");
+  AUTH.client=window.supabase.createClient(cfg.url,cfg.key,{auth:{flowType:"pkce",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  AUTH.client.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"&&AUTH.user){AUTH.user=null;APP_READY=false;readings={};route();showGate("")}});
+  let session=null;try{session=(await AUTH.client.auth.getSession()).data.session}catch(e){}
+  if(session)await startSession(session.user);else showGate("");
+}
+async function startSession(user){
+  AUTH.user=user;RKEY="tarot2-readings:"+user.id;AUTH.synced={};AUTH.noSync=false;
+  try{const u=new URL(location.href);if(u.searchParams.has("code")){u.searchParams.delete("code");history.replaceState(null,"",u)}}catch(e){}
+  showGate("기록을 불러오고 있어요…");
+  const local=store.get(RKEY,{});
+  const legacy=store.get("tarot2-readings",null); // 로그인 전 이 기기에 쌓인 기록은 처음 로그인한 계정으로 옮긴다
+  if(legacy&&typeof legacy==="object"){for(const k in legacy)if(!local[k])local[k]=legacy[k];try{localStorage.removeItem("tarot2-readings")}catch(e){}}
+  const {data,error}=await AUTH.client.from("readings").select("key,data");
+  if(error){AUTH.noSync=true;readings=local;ready();store.set(RKEY,readings);setSync("기록을 서버에서 불러오지 못해 이 기기 기록으로 보여드려요. 새로고침하면 다시 시도해요.");return}
+  for(const row of data){local[row.key]=row.data;AUTH.synced[row.key]=JSON.stringify(row.data)} // 서버 기록이 우선
+  readings=local;ready();store.set(RKEY,readings);cloudSave();
+}
+function cloudSave(){if(!AUTH.user||AUTH.noSync)return;clearTimeout(AUTH.timer);AUTH.timer=setTimeout(cloudPush,800)}
+async function cloudPush(){
+  if(!AUTH.user||AUTH.noSync)return;const uid=AUTH.user.id,rows=[],js={};
+  for(const k in readings){const j=JSON.stringify(readings[k]);if(AUTH.synced[k]!==j){rows.push({user_id:uid,key:k,data:readings[k],updated_at:new Date().toISOString()});js[k]=j}}
+  if(!rows.length)return true;
+  const {error}=await AUTH.client.from("readings").upsert(rows,{onConflict:"user_id,key"});
+  if(error){setSync("기록을 저장하지 못했어요. 인터넷이 연결되면 다시 저장할게요.");return false}
+  if(AUTH.user&&AUTH.user.id===uid)Object.assign(AUTH.synced,js);setSync("");return true}
+addEventListener("online",cloudSave);
+$("googleBtn").onclick=async()=>{$("gateMsg").textContent="Google로 이동하고 있어요…";
+  const {error}=await AUTH.client.auth.signInWithOAuth({provider:"google",options:{redirectTo:location.origin+location.pathname+location.search}});
+  if(error)$("gateMsg").textContent="로그인을 시작하지 못했어요. 잠시 후 다시 시도해 주세요."};
+$("logoutBtn").onclick=async()=>{clearTimeout(AUTH.timer);const ok=await cloudPush();
+  if(!ok&&!confirm("아직 저장되지 않은 기록이 있어요. 그래도 로그아웃할까요?"))return;
+  try{localStorage.removeItem(RKEY)}catch(e){}RKEY="tarot2-readings";await AUTH.client.auth.signOut()};
+initAuth();
 
 </script>
 <script>if("serviceWorker" in navigator&&!(window.claude&&window.claude.use))addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
