@@ -20,6 +20,10 @@ create policy "readings: insert own" on public.readings for insert with check (a
 create policy "readings: update own" on public.readings for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "readings: delete own" on public.readings for delete using (auth.uid() = user_id);
 
+-- 로그인한 사람에게 표 사용 권한을 준다(행은 위 RLS 규칙으로 본인 것만). 로그인 안 한 사람(anon)은 접근 불가.
+revoke all on public.readings from anon;
+grant select, insert, update, delete on public.readings to authenticated;
+
 -- 2) AI 풀이 하루 사용 횟수(한국 날짜 기준). 표는 직접 못 읽고, 아래 함수로만 1씩 올린다.
 create table if not exists public.ai_usage (
   user_id uuid not null references auth.users on delete cascade,
@@ -28,6 +32,7 @@ create table if not exists public.ai_usage (
   primary key (user_id, day)
 );
 alter table public.ai_usage enable row level security;
+revoke all on public.ai_usage from anon, authenticated; -- 표는 직접 못 건드리고 아래 함수로만
 
 -- 로그인한 본인의 오늘 횟수를 1 올리고, 한도 안이면 true. 서버(api/reading.js)가 부른다.
 create or replace function public.use_ai_quota(max_per_day int)
