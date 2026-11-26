@@ -1,5 +1,5 @@
 @font-face{font-family:"Pretendard";src:url(fonts/Pretendard.woff2) format("woff2");font-weight:45 920;font-display:swap}
-:root{--bg:#0E1230;--bg2:#171C44;--text:#F4EEDD;--muted:#C9C0A8;--accent:#D4AF63;--line:rgba(212,175,99,.35);color-scheme:dark}
+:root{--bg:#0B0F26;--bg2:#131938;--text:#F5EFE2;--muted:#B8AF98;--accent:#DAB86E;--line:rgba(218,184,110,.24);color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.7;word-break:keep-all;overflow-wrap:break-word}
 main{max-width:760px;margin:0 auto;padding:28px 16px 64px}

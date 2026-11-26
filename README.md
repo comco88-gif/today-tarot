@@ -12,7 +12,7 @@
 | `cards/00.jpg`~`77.jpg` | 카드 이미지 (0~21 메이저, 22~ 완드·컵·소드·펜타클 순) |
 | `fonts/Pretendard.woff2` | 본문 폰트 |
 | `privacy.html`, `terms.html`, `legal.css` | 개인정보처리방침·이용약관 (`[운영자 이름]`·`[문의 이메일]` 채우기) |
-| `sw.js` | 오프라인 캐시 (버전 `tarot-v7`) |
+| `sw.js` | 오프라인 캐시 (버전 `tarot-v9`) |
 | `vendor/supabase-js-2.118.0.js` | Supabase 브라우저 라이브러리(직접 호스팅) |
 | `supabase/schema.sql` | Supabase에 한 번 실행할 표·보안 규칙·AI 횟수 함수 |
 | `manifest.webmanifest`, `icons/` | 홈 화면 앱 설정 |
