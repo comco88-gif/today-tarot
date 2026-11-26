@@ -4,13 +4,19 @@
 
 ## 수정할 때 지킬 규칙
 1. **카드 데이터·유형·위치 설명·카드 조합은 두 곳에 있다**: `index.html`의 `<script>` 앞부분(`CARDS`, `TOPICS`, `POS`, `COMBOS`, `NO_CARDS`, `validate`, `buildPrompt` 등)과 `api/_lib.js`. 하나를 고치면 반드시 다른 쪽도 똑같이 고친다.
-2. **화면을 바꾸면 `sw.js`의 캐시 버전(현재 `tarot-v9`)을 올린다** (tarot-v5, v6 …). index.html·카드 이미지·폰트·아이콘 변경 모두 해당.
+2. **화면을 바꾸면 `sw.js`의 캐시 버전(현재 `tarot-v10`)을 올린다** (tarot-v5, v6 …). index.html·카드 이미지·폰트·아이콘 변경 모두 해당.
 3. **API 키는 절대 코드나 저장소에 넣지 않는다.** `ANTHROPIC_API_KEY`는 Vercel 환경변수로만 쓴다. Supabase는 공개용 anon(publishable) 키만 쓰고 service_role(secret) 키는 절대 쓰지 않는다. `.env` 파일은 커밋하지 않는다(.gitignore에 있음).
 4. **카드 이미지는 1909년 라이더-웨이트 원판(퍼블릭 도메인)만 쓴다.** 이후 재채색판·현대 복각판은 저작권이 있을 수 있으니 쓰지 않는다.
 
 ## 확인 방법
 - `node -e "import('./api/_lib.js').then(m=>console.log(m.CARDS.length))"` → 78
 - 배포 후: `/`, `/cards/00.jpg`, `/manifest.webmanifest`가 200, `/api/reading`에 POST하면 NDJSON 줄(`{"t":…}` … `{"done":true}`)이 온다.
+
+## 화면 구조 (Astral Sanctuary, 단일 화면)
+- 탭·페이지 없이 한 화면(100dvh, 페이지 스크롤 없음). 단계: 질문(하단 독) → 길게 눌러 섞기 → 3D 아치에서 카드 고르기 → 뒤집기 → 슬라이드업 풀이 시트.
+- 3D는 CSS 3D(카드: 앞·뒤 면 + 금박 두께, 틸트·글레어)와 캔버스 별빛 파티클. Three.js는 쓰지 않는다.
+- 계정(로그아웃·회원 탈퇴), 나의 기록(지난 풀이·메모), 기록 내보내기, 약관 링크는 오른쪽 위 ☰ 메뉴 시트에 있다. 공개에 필요하니 없애지 말 것.
+- `index.html` 스크립트 구성: 카드 데이터·프롬프트(api/_lib.js와 같은 부분) → 저장·링크 → 풀이 엔진(aiReading·template) → 공유 이미지(makeImage) → UI(`// Astral Sanctuary` 이후) → 로그인·동기화.
 
 ## AI 연결
 - `api/reading.js`가 공식 SDK `@anthropic-ai/sdk`로 Claude를 부른다. 모델은 환경변수 `CLAUDE_MODEL`(기본 `claude-sonnet-5-5`).

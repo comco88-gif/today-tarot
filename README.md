@@ -5,14 +5,14 @@
 ## 구조
 | 경로 | 내용 |
 |---|---|
-| `index.html` | 앱 전체(화면·스타일·스크립트). 카드 데이터와 프롬프트도 들어 있다. |
+| `index.html` | 앱 전체(단일 화면 3D UI·스타일·스크립트). 카드 데이터와 프롬프트도 들어 있다. |
 | `api/_lib.js` | 서버용 카드 데이터·유형·위치 설명·카드 조합·입력 검증·프롬프트 (index.html과 같은 내용) |
 | `api/config.js` | `GET /api/config` → 브라우저용 Supabase 공개 설정(`SUPABASE_URL`, `SUPABASE_ANON_KEY`) |
 | `api/reading.js` | `POST /api/reading` → Claude API로 풀이 생성(글이 만들어지는 대로 NDJSON 스트림). 키는 환경변수 `ANTHROPIC_API_KEY` |
 | `cards/00.jpg`~`77.jpg` | 카드 이미지 (0~21 메이저, 22~ 완드·컵·소드·펜타클 순) |
 | `fonts/Pretendard.woff2` | 본문 폰트 |
 | `privacy.html`, `terms.html`, `legal.css` | 개인정보처리방침·이용약관 (`[운영자 이름]`·`[문의 이메일]` 채우기) |
-| `sw.js` | 오프라인 캐시 (버전 `tarot-v9`) |
+| `sw.js` | 오프라인 캐시 (버전 `tarot-v10`) |
 | `vendor/supabase-js-2.118.0.js` | Supabase 브라우저 라이브러리(직접 호스팅) |
 | `supabase/schema.sql` | Supabase에 한 번 실행할 표·보안 규칙·AI 횟수 함수 |
 | `manifest.webmanifest`, `icons/` | 홈 화면 앱 설정 |
