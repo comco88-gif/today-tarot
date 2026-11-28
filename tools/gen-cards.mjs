@@ -12,8 +12,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.GEMINI_BASE_URL || "https://generativelanguage.googleapis.com";
-const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
-const KEY = process.env.GEMINI_API_KEY || "proxy-injected"; // 네트워크 시크릿을 쓰면 프록시가 실제 키로 바꿔 넣는다
+const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
+const KEY = process.env.GEMINI_API_KEY || ""; // 비어 있으면 헤더를 보내지 않는다: 클라우드 네트워크 시크릿이 x-goog-api-key를 붙여 준다
 const CONCURRENCY = Number(process.env.CONCURRENCY) || 2;
 const OUT = path.join(ROOT, "cards-char");
 const ANCHOR = path.join(ROOT, "tools", "char-anchor-00.png");
@@ -21,7 +21,7 @@ const PROMPTS = JSON.parse(fs.readFileSync(path.join(ROOT, "tools", "char-prompt
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
-const headers = { "Content-Type": "application/json", "x-goog-api-key": KEY };
+const headers = { "Content-Type": "application/json", ...(KEY ? { "x-goog-api-key": KEY } : {}) };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const b64 = f => fs.readFileSync(f).toString("base64");
 const mime = f => (f.endsWith(".png") ? "image/png" : f.endsWith(".webp") ? "image/webp" : "image/jpeg");
