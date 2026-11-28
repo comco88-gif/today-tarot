@@ -69,7 +69,7 @@ a{color:var(--gold)}
 .lab.pos{font-size:.74rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase}
 .lab.nm{font-size:.86rem;font-weight:600;color:var(--ivory);text-shadow:0 2px 12px rgba(0,0,0,.8)}
 .lab.nm .o{font-weight:400;font-size:.72rem;color:var(--muted);margin-left:5px}
-.lab.nm .o.r{color:var(--amber)}
+.lab.nm .o.r{color:#1a0d06;background:var(--amber);font-weight:800;font-size:.7rem;padding:1px 7px;border-radius:999px;letter-spacing:.02em}
 
 /* card object */
 .c3{
@@ -241,6 +241,10 @@ dialog h2{margin:0;font-size:1.3rem}
 dialog dl{margin:6px 0 0}
 dialog dt{font-size:.72rem;letter-spacing:.16em;color:var(--gold);font-weight:700;margin-top:12px}
 dialog dd{margin:2px 0 0;font-size:.9rem;line-height:1.6}
+.revbadge{margin:0 auto 12px;width:max-content;padding:5px 14px;border-radius:999px;background:linear-gradient(180deg,#ffb08a,var(--amber));color:#1a0d06;font-weight:800;font-size:.82rem;box-shadow:0 0 24px rgba(255,120,70,.45)}
+dialog.rev .big{box-shadow:0 0 0 1.5px rgba(255,138,91,.9),0 0 34px 6px rgba(255,110,60,.45)}
+dialog dt.hot{color:var(--amber)}
+dialog dd.hot{color:var(--ivory);font-weight:600}
 .gate{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:24px 16px;
   background:radial-gradient(ellipse at 50% 40%, rgba(6,8,20,.35), rgba(6,8,20,.85))}
 .gate-box{width:min(400px,100%);text-align:center;border-radius:28px;padding:34px 24px}
@@ -313,10 +317,11 @@ dialog dd{margin:2px 0 0;font-size:.9rem;line-height:1.6}
 </aside>
 
 <dialog id="cardDlg" aria-labelledby="cdTitle">
+  <p class="revbadge" id="cdBadge" hidden>역방향으로 나왔어요</p>
   <img class="big" id="cdImg" alt="">
   <h2 id="cdTitle"></h2>
   <p class="hint" id="cdEn" style="margin:0"></p>
-  <dl><dt>키워드</dt><dd id="cdKw"></dd><dt>그림 속 상징</dt><dd id="cdSym"></dd><dt>정방향</dt><dd id="cdUp"></dd><dt>역방향</dt><dd id="cdRev"></dd></dl>
+  <dl id="cdList"></dl>
   <div class="btnrow"><button class="btn primary" id="cdClose">닫기</button></div>
 </dialog>
 
@@ -552,8 +557,8 @@ async function makeImage(rec){
   for(let i=0;i<n;i++){const d=rec.cards[i],im=await loadImg(IMG[d.c]),cx=sx+i*(cw+24);
     x.save();x.translate(cx+cw/2,y+ch/2);if(d.rev)x.rotate(Math.PI);x.drawImage(im,-cw/2,-ch/2,cw,ch);x.restore();
     const fs=Math.max(22,Math.min(34,cw/8));x.fillStyle=ac;x.font=`500 ${fs}px Pretendard,sans-serif`;x.fillText(t.pos[i],cx+cw/2,y+ch+50,cw+16);
-    x.fillStyle=fg;x.font=`700 ${fs+4}px Pretendard,sans-serif`;x.fillText(CARDS[d.c][0]+(d.rev?" (역)":""),cx+cw/2,y+ch+50+fs*1.5,cw+16)}
-  const adv=((rec.reading||"").match(/\[오늘의 조언\]\s*\n?([^\n\[]+)/)||[])[1]||CARDS[rec.cards[n-1].c][4];
+    x.fillStyle=fg;x.font=`700 ${fs+4}px Pretendard,sans-serif`;x.fillText(CARDS[d.c][0]+(d.rev?" · 역방향":""),cx+cw/2,y+ch+50+fs*1.5,cw+16)}
+  const adv=((rec.reading||"").match(/\[오늘의 조언\]\s*\n?([^\n\[]+)/)||[])[1]||CARDS[rec.cards[n-1].c][rec.cards[n-1].rev?5:4];
   x.fillStyle=fg;x.font="500 46px Pretendard,sans-serif";let line="",lines=[];for(const chh of adv.trim()){if(x.measureText(line+chh).width>W-240&&line){lines.push(line);line=chh}else line+=chh}lines.push(line);
   lines.slice(0,6).forEach((l,i)=>x.fillText(l,W/2,y+ch+290+i*70));
   x.globalAlpha=.7;x.font="400 30px Pretendard,sans-serif";x.fillText("재미와 자기성찰을 위한 콘텐츠",W/2,H-100);x.globalAlpha=1;
@@ -665,7 +670,7 @@ function setLabels(lay){if(!curRec){clearLabels();return}lay=lay||slotLayout(cur
   labelsEl.style.opacity=sheetState==="full"?"0":"1";
   labelsEl.innerHTML=curRec.cards.map((d,i)=>{const f=curRec.flipped.includes(i),C=CARDS[d.c],x=cx+lay.xs[i];
     return `<div class="lab pos" style="left:${x}px;top:${cy+lay.y-lay.h/2-14}px">${esc(t.pos[i])}</div>`+
-      (f?`<div class="lab nm" style="left:${x}px;top:${cy+lay.y+lay.h/2+16}px">${esc(C[0])}${sheetState==="hidden"||innerWidth>=520?`<span class="o${d.rev?" r":""}">${d.rev?"역방향":"정방향"}</span>`:""}</div>`:"")}).join("")}
+      (f?`<div class="lab nm" style="left:${x}px;top:${cy+lay.y+lay.h/2+16}px">${esc(C[0])}${d.rev?'<span class="o r">역방향</span>':sheetState==="hidden"||innerWidth>=520?'<span class="o">정방향</span>':""}</div>`:"")}).join("")}
 function showRecord(rec,from){curRec=rec;phase="reveal";stage.classList.remove("idle");setSheet("hidden",true);renderDock();
   const n=rec.cards.length,lay=slotLayout(n,"reveal"),r=region(),old=els;els=[];const t=typeOf(rec);
   rec.cards.forEach((d,i)=>{const e=makeCard(Math.round(lay.w));e.querySelector(".c-front img").src=IMG[d.c];if(d.rev)e.classList.add("rev");
@@ -673,7 +678,7 @@ function showRecord(rec,from){curRec=rec;phase="reveal";stage.classList.remove("
     if(src&&src._pos)place(e,{...src._pos,s:src._w/e._w});else if(from)place(e,{x:0,y:r.cy,z:-260,s:.5});else{e.classList.add("appear");place(e,{x:lay.xs[i],y:lay.y,z:0})}
     if(rec.flipped.includes(i))e.classList.add("flip");
     e.setAttribute("aria-label",rec.flipped.includes(i)?`${t.pos[i]}: ${CARDS[d.c][0]} ${d.rev?"역방향":"정방향"} 자세히 보기`:`${t.pos[i]} 카드 뒤집기`);
-    e.onclick=()=>rec.flipped.includes(i)?openCard(d.c):flipCard(rec,i);els.push(e)});
+    e.onclick=()=>rec.flipped.includes(i)?openCard(d.c,d.rev):flipCard(rec,i);els.push(e)});
   old.forEach(o=>{if(from&&from.includes(o))o.remove()});dropCards(old.filter(o=>!(from&&from.includes(o))));
   nextFrame(()=>{els.forEach(e=>e.classList.remove("instant"));layoutReveal(from?750:0)});
   if(rec.flipped.length===n)setTimeout(()=>openReading(rec),from?900:250)}
@@ -726,7 +731,10 @@ function wireShuffle(){const btn=$("shufBtn");if(!btn)return;let t0=0,timer=null
   const sk=$("skipBtn");if(sk)sk.onclick=()=>{if(!validQ())return;flow={question:getQuestion(),picks:[]};showFan()}}
 
 // ---------- card detail ----------
-function openCard(c){const C=CARDS[c];$("cdImg").src=IMG[c];$("cdImg").alt=C[0]+" 카드";$("cdTitle").textContent=C[0];$("cdEn").textContent=C[1];$("cdKw").textContent=C[3];$("cdSym").textContent=symbolOf(c);$("cdUp").textContent=C[4];$("cdRev").textContent=C[5];$("cardDlg").showModal()}
+function openCard(c,rev){const C=CARDS[c],dlg=$("cardDlg");$("cdImg").src=IMG[c];$("cdImg").alt=C[0]+" 카드"+(rev?" (역방향)":"");$("cdTitle").textContent=C[0]+(rev?" · 역방향":"");$("cdEn").textContent=C[1];
+  $("cdBadge").hidden=!rev;dlg.classList.toggle("rev",!!rev);
+  const up=`<dt>정방향${rev?" (참고)":""}</dt><dd>${esc(C[4])}</dd>`,dn=`<dt class="${rev?"hot":""}">역방향${rev?" · 이번에 나온 방향":""}</dt><dd class="${rev?"hot":""}">${esc(C[5])}</dd>`;
+  $("cdList").innerHTML=`<dt>키워드</dt><dd>${esc(C[3])}</dd><dt>그림 속 상징</dt><dd>${esc(symbolOf(c))}</dd>`+(rev?dn+up:up+dn);dlg.showModal()}
 $("cdClose").onclick=()=>$("cardDlg").close();
 $("cardDlg").addEventListener("click",e=>{if(e.target===$("cardDlg"))$("cardDlg").close()});
 
