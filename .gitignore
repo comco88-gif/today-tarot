@@ -7,3 +7,6 @@ Thumbs.db
 
 .vercel
 .env*
+
+# 캐릭터 덱 생성 원본(용량 큼) — 앱은 cards-char/*.webp만 쓴다
+cards-char/*.png
