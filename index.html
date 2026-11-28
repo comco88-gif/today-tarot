@@ -99,10 +99,6 @@ a{color:var(--gold)}
 .c-front img{width:100%;height:100%;object-fit:cover;display:block;border-radius:6px;pointer-events:none}
 [data-deck="char"] .c-front{padding:0;background:#0B1024}
 [data-deck="char"] .c-front img{border-radius:9px}
-.decks{display:flex;gap:10px;margin-top:4px}
-.deckbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px;border-radius:16px;border:1px solid var(--glass-line);background:rgba(255,255,255,.03);color:var(--muted);cursor:pointer;font-size:.8rem}
-.deckbtn img{width:64px;aspect-ratio:7/12;object-fit:cover;border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,.4)}
-.deckbtn[aria-pressed="true"]{border-color:var(--gold);color:var(--ivory);box-shadow:0 0 0 1px var(--gold) inset}
 /* specular glare + holographic sheen */
 .c-face::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;opacity:var(--go);transition:opacity .35s;
   background:
@@ -305,11 +301,6 @@ dialog dd{margin:2px 0 0;font-size:.9rem;line-height:1.6}
   <p id="acctInfo"></p>
   <div class="btnrow"><button class="btn" id="logoutBtn" hidden>로그아웃</button><button class="btn danger" id="deleteBtn" hidden>회원 탈퇴</button></div>
   <p id="syncMsg" class="hint" role="status"></p>
-  <h2>카드 덱</h2>
-  <div class="decks" role="group" aria-label="카드 덱">
-    <button class="deckbtn" data-deck="char" aria-pressed="false"><img src="cards-char/00.webp" alt="" loading="lazy">캐릭터 덱</button>
-    <button class="deckbtn" data-deck="orig" aria-pressed="false"><img src="cards/00.jpg" alt="" loading="lazy">1909 원판</button>
-  </div>
   <h2>나의 기록</h2>
   <div class="mstats" id="mstats"></div>
   <div class="hist" id="history"></div>
@@ -474,11 +465,9 @@ ${cards}${combos.length?"\n함께 나온 카드 조합의 뜻(카드의 연결�
   return {system,user};
 }
 
-// 카드 그림 덱: "char"(캐릭터, cards-char/*.webp) 또는 "orig"(1909년 원판, cards/*.jpg)
-let DECK=(()=>{try{const v=JSON.parse(localStorage.getItem("tarot2-deck"));return v==="orig"?"orig":"char"}catch(e){return "char"}})();
-const deckImg=(d,i)=>d==="char"?"cards-char/"+String(i).padStart(2,"0")+".webp":"cards/"+String(i).padStart(2,"0")+".jpg";
-let IMG=Array.from({length:78},(_,i)=>deckImg(DECK,i));
-document.documentElement.dataset.deck=DECK;
+// 카드 그림: 캐릭터 덱(cards-char/*.webp, 1909년 원판을 바탕으로 새로 그림)
+const IMG=Array.from({length:78},(_,i)=>"cards-char/"+String(i).padStart(2,"0")+".webp");
+document.documentElement.dataset.deck="char";
 const IN_CLAUDE=!!(window.claude&&window.claude.use);
 const MAJOR_COLOR=["노란색","빨간색","은색","초록색","주황색","자주색","분홍색","남색","황금색","회색","갈색","하늘색","청록색","검은색","보라색","진홍색","남색","하늘색","은색","노란색","흰색","연두색"];
 const SUIT=[["완드","주황색","불의 기운이에요. 막대에서 돋는 새순은 의지와 성장, 행동을 뜻해요."],["컵","하늘색","물의 기운이에요. 잔에 담긴 물은 감정과 관계, 마음의 흐름을 뜻해요."],["소드","은회색","공기의 기운이에요. 검은 생각과 판단, 말의 날카로움을 뜻해요."],["펜타클","초록색","흙의 기운이에요. 별이 새겨진 동전은 돈과 일, 몸과 일상을 뜻해요."]];
@@ -782,12 +771,7 @@ function renderMenu(){if(typeof renderAccount==="function")renderAccount();
     ${r.question?`<p class="hint">“${esc(r.question)}”</p>`:""}<div class="rbody">${r.reading?renderText(r.reading):'<p class="hint">아직 풀이를 보지 않았어요.</p>'}</div>
     <label class="memo-l" for="hm${i}">실제로 어땠나요?</label><textarea id="hm${i}" data-k="${esc(k)}" maxlength="300">${esc(r.memo||"")}</textarea></details>`}).join(""):'<p class="hint">아직 기록이 없어요. 오늘의 첫 카드를 뽑아보세요.</p>';
   $("history").querySelectorAll("textarea").forEach(ta=>ta.addEventListener("change",()=>{const r=readings[ta.dataset.k];if(r){r.memo=ta.value.slice(0,300);save()}}))}
-function setDeck(d){DECK=d==="orig"?"orig":"char";store.set("tarot2-deck",DECK);document.documentElement.dataset.deck=DECK;
-  IMG=Array.from({length:78},(_,i)=>deckImg(DECK,i));
-  document.querySelectorAll(".deckbtn").forEach(b=>b.setAttribute("aria-pressed",b.dataset.deck===DECK));
-  if(curRec)els.forEach((e,i)=>{const im=e.querySelector(".c-front img");if(im&&curRec.cards[i])im.src=IMG[curRec.cards[i].c]});renderMenu()}
-document.querySelectorAll(".deckbtn").forEach(b=>b.onclick=()=>setDeck(b.dataset.deck));
-function openMenu(){renderMenu();document.querySelectorAll(".deckbtn").forEach(b=>b.setAttribute("aria-pressed",b.dataset.deck===DECK));$("menu").classList.add("open");$("menu").inert=false;$("scrim").classList.add("on");$("menuBtn").setAttribute("aria-expanded","true");setTimeout(()=>$("menuClose").focus(),50)}
+function openMenu(){renderMenu();$("menu").classList.add("open");$("menu").inert=false;$("scrim").classList.add("on");$("menuBtn").setAttribute("aria-expanded","true");setTimeout(()=>$("menuClose").focus(),50)}
 function closeMenu(){$("menu").classList.remove("open");$("menu").inert=true;$("scrim").classList.remove("on");$("menuBtn").setAttribute("aria-expanded","false")}
 $("menuBtn").onclick=openMenu;$("menuClose").onclick=closeMenu;$("scrim").onclick=closeMenu;
 addEventListener("keydown",e=>{if(e.key==="Escape"&&$("menu").classList.contains("open"))closeMenu()});

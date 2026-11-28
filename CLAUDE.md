@@ -6,7 +6,7 @@
 1. **카드 데이터·유형·위치 설명·카드 조합은 두 곳에 있다**: `index.html`의 `<script>` 앞부분(`CARDS`, `TOPICS`, `POS`, `COMBOS`, `NO_CARDS`, `validate`, `buildPrompt` 등)과 `api/_lib.js`. 하나를 고치면 반드시 다른 쪽도 똑같이 고친다.
 2. **화면을 바꾸면 `sw.js`의 캐시 버전(현재 `tarot-v11`)을 올린다** (tarot-v5, v6 …). index.html·카드 이미지·폰트·아이콘 변경 모두 해당.
 3. **API 키는 절대 코드나 저장소에 넣지 않는다.** `ANTHROPIC_API_KEY`는 Vercel 환경변수로만 쓴다. Supabase는 공개용 anon(publishable) 키만 쓰고 service_role(secret) 키는 절대 쓰지 않는다. `.env` 파일은 커밋하지 않는다(.gitignore에 있음).
-4. **카드 그림은 두 덱만 쓴다.** `cards/`는 1909년 라이더-웨이트 원판(퍼블릭 도메인), `cards-char/`는 그 원판을 바탕으로 Gemini로 새로 그린 캐릭터 덱(기본). 이후 재채색판·현대 복각판 등 저작권이 있을 수 있는 그림은 쓰지 않는다.
+4. **카드 그림은 두 덱만 쓴다.** `cards/`는 1909년 라이더-웨이트 원판(퍼블릭 도메인), `cards-char/`는 그 원판을 바탕으로 Gemini로 새로 그린 캐릭터 덱(앱에 보이는 그림). 이후 재채색판·현대 복각판 등 저작권이 있을 수 있는 그림은 쓰지 않는다.
 
 ## 확인 방법
 - `node -e "import('./api/_lib.js').then(m=>console.log(m.CARDS.length))"` → 78
@@ -19,7 +19,7 @@
 - `index.html` 스크립트 구성: 카드 데이터·프롬프트(api/_lib.js와 같은 부분) → 저장·링크 → 풀이 엔진(aiReading·template) → 공유 이미지(makeImage) → UI(`// Astral Sanctuary` 이후) → 로그인·동기화.
 
 ## 캐릭터 덱 (cards-char)
-- 앱은 `cards-char/NN.webp`(560×960, 7:12)를 쓴다. 기본은 캐릭터 덱, ☰ 메뉴 → 카드 덱에서 1909 원판으로 바꿀 수 있다(`tarot2-deck`).
+- 앱은 `cards-char/NN.webp`(560×960, 7:12)만 쓴다. 원판 선택 기능은 없다(원판 `cards/*.jpg`는 생성 참고용으로만 남겨 둔다).
 - 다시 만들기: `NODE_USE_ENV_PROXY=1 node tools/gen-cards.mjs 5,17 --force` → `python3 tools/build-char-webp.py`. 키는 클라우드 환경 네트워크 시크릿(x-goog-api-key, generativelanguage.googleapis.com) 또는 `GEMINI_API_KEY`. 생성 PNG 원본은 저장소에 넣지 않는다(.gitignore).
 - 화풍 기준은 `tools/char-anchor-00.png`, 프롬프트는 `tools/char-prompts.json`(아래 제목 띠 문구 포함).
 
