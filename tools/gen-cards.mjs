@@ -18,6 +18,8 @@ const CONCURRENCY = Number(process.env.CONCURRENCY) || 2;
 const OUT = path.join(ROOT, "cards-char");
 const ANCHOR = path.join(ROOT, "tools", "char-anchor-00.png");
 const PROMPTS = JSON.parse(fs.readFileSync(path.join(ROOT, "tools", "char-prompts.json"), "utf8"));
+// 카드별 보정 문구(검수에서 나온 문제: 로마 숫자·없는 동물·노출 등). 있으면 프롬프트 끝에 붙인다.
+const FIXES = (() => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, "tools", "char-fixes.json"), "utf8")); } catch { return {}; } })();
 
 const args = process.argv.slice(2);
 const force = args.includes("--force");
@@ -54,7 +56,7 @@ async function generate(i) {
     contents: [{ role: "user", parts: [
       { inline_data: { mime_type: mime(ANCHOR), data: b64(ANCHOR) } },
       { inline_data: { mime_type: mime(orig), data: b64(orig) } },
-      { text: p.prompt },
+      { text: p.prompt + (FIXES[String(i)] ? "\n\nImportant corrections: " + FIXES[String(i)] : "") },
     ] }],
     generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "9:16" } },
   };
